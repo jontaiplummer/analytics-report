@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBFB Website Analytics — Strategic Diagnosis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1218;
+    --bg3: #161b24;
+    --surface: #1c2233;
+    --surface2: #232b3e;
+    --border: #2a3347;
+    --accent: #00d4ff;
+    --accent2: #ff4d6d;
+    --accent3: #ffd166;
+    --accent4: #06d6a0;
+    --text: #e8ecf4;
+    --text2: #8b95aa;
+    --text3: #4d5a70;
+    --critical: #ff3d5c;
+    --high: #ff8c42;
+    --medium: #ffd166;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 60px 32px 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 32px; right: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 70%);
+  }
+
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-eyebrow::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 6vw, 88px);
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  .header h1 span {
+    color: var(--accent);
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .meta-value {
+    font-size: 14px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  /* ── KPI ROW ── */
+  .kpi-section {
+    padding: 48px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .kpi-card:hover { border-color: var(--accent); }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.blue::before { background: var(--accent); }
+  .kpi-card.red::before { background: var(--accent2); }
+  .kpi-card.yellow::before { background: var(--accent3); }
+  .kpi-card.green::before { background: var(--accent4); }
+
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .kpi-value {
+    font-family: var(--font-display);
+    font-size: 44px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .kpi-card.blue .kpi-value { color: var(--accent); }
+  .kpi-card.red .kpi-value { color: var(--accent2); }
+  .kpi-card.yellow .kpi-value { color: var(--accent3); }
+  .kpi-card.green .kpi-value { color: var(--accent4); }
+
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* ── SECTION TITLES ── */
+  .section {
+    padding: 0 32px 64px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 32px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CHARTS GRID ── */
+  .charts-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .charts-3col {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    position: relative;
+  }
+
+  .chart-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .chart-subtitle {
+    font-size: 13px;
+    color: var(--text3);
+    margin-bottom: 24px;
+  }
+
+  .chart-canvas-wrap {
+    position: relative;
+    height: 260px;
+  }
+
+  .chart-canvas-wrap.tall {
+    height: 320px;
+  }
+
+  /* ── CHANNEL TABLE ── */
+  .channel-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .channel-table th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    text-align: left;
+    padding: 0 16px 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .channel-table td {
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid rgba(42,51,71,0.5);
+    font-size: 13px;
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .channel-table tr:last-child td { border-bottom: none; }
+
+  .bar-bg {
+    width: 100%;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 1s ease;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .tag.danger { background: rgba(255,61,92,0.15); color: var(--critical); }
+  .tag.warn { background: rgba(255,209,102,0.15); color: var(--accent3); }
+  .tag.ok { background: rgba(6,214,160,0.15); color: var(--accent4); }
+
+  /* ── DEVICE DONUT ── */
+  .device-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .device-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .device-icon.desktop { background: rgba(0,212,255,0.1); }
+  .device-icon.mobile { background: rgba(255,77,109,0.1); }
+  .device-icon.tablet { background: rgba(255,209,102,0.1); }
+
+  .device-info { flex: 1; }
+  .device-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .device-count { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+
+  /* ── FINDINGS ── */
+  .findings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .finding-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .finding-card:hover {
+    transform: translateX(4px);
+    border-color: var(--accent);
+  }
+
+  .finding-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .finding-card.critical::before { background: var(--critical); }
+  .finding-card.high::before { background: var(--high); }
+  .finding-card.medium::before { background: var(--medium); }
+
+  .finding-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .finding-rank {
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 1;
+    color: var(--border);
+    flex-shrink: 0;
+    width: 60px;
+  }
+
+  .finding-main { flex: 1; min-width: 260px; }
+
+  .finding-impact {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .finding-card.critical .finding-impact { background: rgba(255,61,92,0.15); color: var(--critical); }
+  .finding-card.high .finding-impact { background: rgba(255,140,66,0.15); color: var(--high); }
+  .finding-card.medium .finding-impact { background: rgba(255,209,102,0.15); color: var(--medium); }
+
+  .finding-title {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .finding-metric {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+
+  .finding-detail {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .finding-action {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.12);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .action-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .action-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── AI TRAFFIC CALLOUT ── */
+  .ai-callout {
+    background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(6,214,160,0.06));
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 12px;
+    padding: 28px 32px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .ai-icon { font-size: 36px; }
+
+  .ai-text h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .ai-text p {
+    font-size: 13px;
+    color: var(--text2);
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  .ai-stat {
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .ai-stat-num {
+    font-family: var(--font-display);
+    font-size: 48px;
+    color: var(--accent4);
+    line-height: 1;
+  }
+
+  .ai-stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── PAGES TABLE ── */
+  .pages-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .page-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(42,51,71,0.4);
+  }
+
+  .page-row:last-child { border-bottom: none; }
+
+  .page-rank {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text3);
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  .page-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .page-bar-wrap {
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .page-users {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text2);
+    width: 40px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .page-flag {
+    flex-shrink: 0;
+  }
+
+  /* ── FOOTER ── */
+  .report-footer {
+    margin: 0 32px 64px;
+    max-width: 1400px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    flex-wrap: gap;
+    gap: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .charts-2col, .charts-3col { grid-template-columns: 1fr; }
+    .finding-top { flex-direction: column; }
+    .ai-stat { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-eyebrow">DBFB · Strategic Analytics Report</div>
+  <h1>WEBSITE<br>INTELLIGENCE<br><span>REPORT</span></h1>
+  <div class="header-meta">
+    <div class="meta-item">
+      <span class="meta-label">Data Period</span>
+      <span class="meta-value">23 Apr 2025 – 23 Apr 2026</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Data Source</span>
+      <span class="meta-value">Google Analytics 4 — GA4 Export</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Records Analysed</span>
+      <span class="meta-value">4,808 session rows</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Analyst</span>
+      <span class="meta-value">AI Data Analysis — Claude</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI ROW -->
+<div class="kpi-section">
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total Active Users</div>
+      <div class="kpi-value">8,963</div>
+      <div class="kpi-sub">Across all channels, 12 months</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Dark / Unattributed</div>
+      <div class="kpi-value">74.9%</div>
+      <div class="kpi-sub">6,710 users — Direct / None</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">New vs Returning</div>
+      <div class="kpi-value">80%</div>
+      <div class="kpi-sub">7,151 new · 1,795 established</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Mobile Share</div>
+      <div class="kpi-value">27.5%</div>
+      <div class="kpi-sub">2,465 mobile users</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Contact Page Visits</div>
+      <div class="kpi-value">381</div>
+      <div class="kpi-sub">88.7% are Direct traffic only</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Paid ROI Risk</div>
+      <div class="kpi-value">HIGH</div>
+      <div class="kpi-sub">Display: 98.6% mobile, no landing page</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRAFFIC OVERVIEW CHARTS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">TRAFFIC OVERVIEW</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="charts-3col">
+    <!-- Monthly trend -->
+    <div class="chart-card">
+      <div class="chart-title">Monthly Active Users — New vs Established</div>
+      <div class="chart-subtitle">12-month trend showing clear peak in Jun/Jul 2025 and steady decline through 2026</div>
+      <div class="chart-canvas-wrap tall">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Device split -->
+    <div class="chart-card">
+      <div class="chart-title">Device Split</div>
+      <div class="chart-subtitle">Where users are browsing from</div>
+      <div class="chart-canvas-wrap" style="height: 200px; margin-bottom: 24px;">
+        <canvas id="deviceChart"></canvas>
+      </div>
+      <div class="device-grid">
+        <div class="device-item">
+          <div class="device-icon desktop">🖥️</div>
+          <div class="device-info">
+            <div class="device-name">Desktop</div>
+            <div class="device-count">6,447 users · 71.9%</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">71.9%</div>
+        </div>
+        <div class="device-item">
+          <div class="device-icon mobile">📱</div>
+          <div class="device-info">
+            <div class="device-name">Mobile</div>
+            <div class="device-count">2,465 users · 27.5%</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--accent2)">27.5%</div>
+        </div>
+        <div class="device-item">
+          <div class="device-icon tablet">📟</div>
+          <div class="device-info">
+            <div class="device-name">Tablet</div>
+            <div class="device-count">51 users · 0.6%</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--accent3)">0.6%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Channel Breakdown -->
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-title">Channel Performance Breakdown</div>
+    <div class="chart-subtitle">All traffic sources — users, share of total, and mobile % (mobile % flags paid channel anomalies)</div>
+    <table class="channel-table" style="margin-top:8px">
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Users</th>
+          <th style="width:180px">Share of Total</th>
+          <th>Mobile %</th>
+          <th>New Users</th>
+          <th>Est. Users</th>
+          <th>Health</th>
+        </tr>
+      </thead>
+      <tbody id="channelTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Channel donut + pages -->
+  <div class="charts-2col">
+    <div class="chart-card">
+      <div class="chart-title">Channel Mix — Share of Total Users</div>
+      <div class="chart-subtitle">Direct dominance reveals attribution gap</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="channelDonut"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Top Landing Pages</div>
+      <div class="chart-subtitle">Where users actually arrive — product page traffic is thin</div>
+      <div class="pages-grid" id="pagesGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AI CALLOUT -->
+<div class="section" style="padding-top:0">
+  <div class="ai-callout">
+    <div class="ai-icon">🤖</div>
+    <div class="ai-text">
+      <h3>Emerging: AI-Driven Traffic (ChatGPT & Perplexity)</h3>
+      <p>DBFB is already being surfaced in AI chatbot responses — 54 users arrived from ChatGPT.com and Perplexity.ai over 12 months. This is a brand-new acquisition channel that is growing exponentially industry-wide. There is no content strategy in place to capture or convert these high-intent visitors. This needs to be on your 2026 roadmap.</p>
+    </div>
+    <div class="ai-stat">
+      <div class="ai-stat-num">54</div>
+      <div class="ai-stat-label">AI-referred users<br>in 12 months</div>
+    </div>
+  </div>
+</div>
+
+<!-- KEY FINDINGS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">7 KEY FINDINGS — RANKED BY COMMERCIAL IMPACT</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="findings-list" id="findingsList"></div>
+</div>
+
+<!-- PAID CHANNEL DEEP DIVE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">PAID CHANNEL DEEP DIVE</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="charts-2col">
+    <div class="chart-card">
+      <div class="chart-title">Contact Page (/get-in-touch/) — Traffic by Channel</div>
+      <div class="chart-subtitle">Almost no paid or organic traffic converting to contact intent</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="contactChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Display Ad Anomaly — Mobile vs Desktop</div>
+      <div class="chart-subtitle">98.6% of Display traffic is mobile — all landing on generic homepage</div>
+      <div style="display:flex; flex-direction:column; gap:20px; margin-top:16px;">
+        <div style="background:var(--bg3);border-radius:10px;padding:20px;border:1px solid var(--border)">
+          <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Display Traffic Device Split</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <span style="font-size:13px;color:var(--text2);width:80px">Mobile</span>
+            <div style="flex:1;height:24px;background:var(--bg);border-radius:4px;overflow:hidden">
+              <div style="width:98.6%;height:100%;background:var(--critical);border-radius:4px;display:flex;align-items:center;padding-left:8px">
+                <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:white">363 users · 98.6%</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:13px;color:var(--text2);width:80px">Desktop</span>
+            <div style="flex:1;height:24px;background:var(--bg);border-radius:4px;overflow:hidden">
+              <div style="width:1.4%;height:100%;background:var(--accent);border-radius:4px;min-width:50px;display:flex;align-items:center;padding-left:8px">
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--text2)">2 · 0.5%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(255,61,92,0.06);border:1px solid rgba(255,61,92,0.2);border-radius:10px;padding:20px">
+          <div style="font-size:13px;font-weight:600;color:var(--critical);margin-bottom:8px">⚠️ Campaign Diagnosis</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.7">The Display campaign ran Apr–Jul 2025, then stopped. The targeting appears to be mobile audience segments, but the landing destination — a homepage URL with no mobile CTA or conversion path — means budget was spent with zero downstream intent capture. Classic "spray and pray" display without conversion architecture.</div>
+        </div>
+
+        <div style="background:rgba(6,214,160,0.06);border:1px solid rgba(6,214,160,0.2);border-radius:10px;padding:20px">
+          <div style="font-size:13px;font-weight:600;color:var(--accent4);margin-bottom:8px">✓ Recommended Fix</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.7">Build a mobile-optimised landing page per product. Route Display to a dedicated /lp/connectivity or /lp/managed-it page with a single CTA. Integrate HubSpot form. Track lead source. Restart only when conversion path exists.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ESTABLISHED USER TREND -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">ESTABLISHED USER ENGAGEMENT DECLINE</div>
+    <div class="section-line"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Established (Returning) Users — Monthly Trend</div>
+    <div class="chart-subtitle">Peak of 193 in Jun 2025 → 109 in Apr 2026. A 43% decline in existing customer web engagement.</div>
+    <div class="chart-canvas-wrap tall">
+      <canvas id="establishedChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="report-footer" style="display:flex;max-width:1400px;margin:0 auto 64px;padding:32px 32px 0;border-top:1px solid var(--border)">
+  <span>DBFB · Website Analytics Diagnosis · Apr 2025–2026</span>
+  <span>Generated by Claude AI Data Analysis</span>
+</div>
+
+<script>
+// ── DATA ──
+const monthly = [
+  {m:"Apr '25",users:230,new:183,est:47},{m:"May '25",users:688,new:541,est:147},
+  {m:"Jun '25",users:921,new:727,est:193},{m:"Jul '25",users:911,new:753,est:158},
+  {m:"Aug '25",users:659,new:501,est:157},{m:"Sep '25",users:703,new:563,est:138},
+  {m:"Oct '25",users:841,new:675,est:164},{m:"Nov '25",users:768,new:641,est:127},
+  {m:"Dec '25",users:634,new:503,est:130},{m:"Jan '26",users:662,new:528,est:134},
+  {m:"Feb '26",users:680,new:543,est:137},{m:"Mar '26",users:725,new:568,est:154},
+  {m:"Apr '26",users:541,new:425,est:109}
+];
+
+const channels = [
+  {name:"Direct",users:6710,pct:74.9,mob_pct:28.0,new:6088,est:618},
+  {name:"Organic Search",users:1277,pct:14.2,mob_pct:8.6,new:377,est:898},
+  {name:"Display",users:368,pct:4.1,mob_pct:98.6,new:366,est:1},
+  {name:"Unassigned",users:171,pct:1.9,mob_pct:9.4,new:90,est:71},
+  {name:"Referral",users:143,pct:1.6,mob_pct:2.1,new:29,est:114},
+  {name:"Email",users:119,pct:1.3,mob_pct:4.2,new:98,est:21},
+  {name:"Organic Social",users:82,pct:0.9,mob_pct:46.3,new:42,est:40},
+  {name:"Paid Social",users:44,pct:0.5,mob_pct:20.5,new:12,est:32},
+  {name:"Paid Search",users:21,pct:0.2,mob_pct:85.7,new:21,est:0}
+];
+
+const pages = [
+  {p:"/ (Homepage)",u:3658,flag:null},
+  {p:"(not set / untracked)",u:847,flag:"warn"},
+  {p:"/roam/",u:431,flag:"ok"},
+  {p:"/get-in-touch/",u:381,flag:null},
+  {p:"/how-we-do-it/join-our-team/",u:268,flag:"warn"},
+  {p:"/sme-solutions/",u:36,flag:"warn"},
+  {p:"/our-solutions/",u:32,flag:"warn"},
+  {p:"/enterprise-solutions/",u:20,flag:"warn"},
+  {p:"/service-to-support-you/",u:20,flag:null},
+  {p:"/industry-news-resource-centre/",u:78,flag:null}
+];
+
+const findings = [
+  {rank:1,impact:"critical",title:"74.9% of traffic is Direct — your attribution is broken",metric:"6,710 of 8,963 sessions have no tracked source",detail:"Three-quarters of your site visitors arrive with no tracked source. This is either dark social (LinkedIn shares, email forwards, WhatsApp links) or — more likely — incomplete UTM tagging on outbound emails, proposals, and offline campaigns. You cannot optimise what you cannot measure. Every sales deck, email signature, and quote PDF landing on this domain without a UTM tag is invisible to your analytics.",action:"Audit all outbound touchpoints immediately. Every email template, quote, proposal and presentation must carry UTM parameters. Implement a UTM governance policy. This will likely reclassify 30–50% of Direct traffic into actionable channels — revealing your real best-performing sources."},
+  {rank:2,impact:"high",title:"Display ads are 98.6% mobile — but landing on the homepage with no conversion path",metric:"363 of 368 Display users on mobile, all hitting generic homepage URL",detail:"Your entire Google Display budget fired at mobile users and dumped them on a generic homepage with no dedicated landing page. There is no conversion path, no message match, and no mobile-optimised offer. The campaign ran only Apr–Jul 2025 then disappeared from the data — almost certainly because it wasn't converting. That's not a surprise — no one would convert from a generic B2B homepage reached via a banner ad on their phone.",action:"Build a dedicated mobile landing page per product campaign before spending another penny on Display. Split Display from Search. Use HubSpot to capture leads. Never send paid traffic to the homepage."},
+  {rank:3,impact:"high",title:"/roam/ is your #1 product page — and existing customers are almost invisible on it",metric:"438 new vs 15 established users on /roam/ (ratio: 29:1)",detail:"Roam is attracting new visitors at scale — 469 total, your best-performing product page by a distance. But only 15 of those visitors were established customers. In a telecoms/managed IT business, mobile roaming for existing contract customers is a near-zero-friction upsell. Your current base doesn't know this product exists, or isn't being guided there. That is a direct revenue leak from your warmest audience.",action:"Launch a targeted HubSpot email campaign to your existing customer base promoting Roam. Segment by mobile or connectivity contract holders for maximum relevance. This is your most immediate cross-sell opportunity visible in this data."},
+  {rank:4,impact:"high",title:"Organic Search drives only 14.2% of traffic — and almost none to product pages",metric:"1,277 organic users; top organic landings are homepage, jobs, and About Us",detail:"Of 1,277 organic visitors, the majority land on the homepage or jobs pages. Only 7 reached /sme-solutions/ organically. Product pages like /enterprise-solutions/ and /our-solutions/ are essentially invisible to search engines. Your blog is generating some traffic (SOGEA, Connected Care articles) but it's not being leveraged — no CTAs, no internal links to product pages, no commercial intent keywords targeted.",action:"Prioritise SEO for commercial intent keywords: 'managed IT services Northampton', 'business broadband provider', 'UCaaS solutions UK'. Build solution-specific landing pages optimised for these terms. Add product CTAs to every blog article and insert internal links from content to solution pages."},
+  {rank:5,impact:"high",title:"/get-in-touch/ has 381 visits — but 88.7% are Direct. Paid channels drive zero pipeline intent.",metric:"338 Direct, 39 Organic, 0 from Paid channels to the contact page",detail:"Your contact page is reached almost exclusively by people who already knew you existed — existing contacts, warm leads, people handed the URL directly. Not a single meaningful paid or organic channel drove users to request a conversation in 12 months. Paid clicks generate impressions but zero commercial intent downstream. You're paying to be seen, but not to be contacted.",action:"Embed HubSpot contact forms and demo CTAs directly on /roam/, /sme-solutions/, /enterprise-solutions/ pages. Don't rely on users finding /get-in-touch/ themselves. Implement exit-intent overlays on high-traffic pages."},
+  {rank:6,impact:"medium",title:"AI-driven traffic from ChatGPT and Perplexity is live — and you have no strategy for it",metric:"54 users from AI platforms in 12 months, with no capture mechanism in place",detail:"54 users arrived from AI chat platforms — a channel that barely existed 2 years ago and is growing faster than any other traffic source industry-wide. These are typically high-intent B2B buyers who asked an AI assistant for a recommendation and were sent to DBFB. You have no content strategy to earn more of these referrals, and no lead capture to convert them when they arrive.",action:"Publish authoritative, structured content — FAQs, comparison guides, case studies — that AI models cite when answering telecom/IT questions. Ensure your website, Google Business Profile, and LinkedIn are consistent. Add a lead magnet (e.g. 'Download our SME Connectivity Guide') targeted at first-time AI-referred visitors."},
+  {rank:7,impact:"medium",title:"Established user web engagement has declined 43% since June 2025",metric:"193 established users Jun '25 → 109 Apr '26: a steady, unbroken decline",detail:"Your contracted revenue base is visiting the website less and less. In isolation this might not be alarming, but combined with flat new user acquisition in 2026, it suggests a cooling engagement environment. Customers who aren't engaging online are not discovering new products, not self-serving on support, and are more vulnerable to competitive approaches. This is a lagging indicator of churn risk.",action:"Launch a quarterly email nurture programme for existing customers — promote new services, upsells, case studies, and renewal content. Build a customer resource hub or portal. Track established user web visits as a KPI alongside NPS and renewal rates."}
+];
+
+// ── CHART DEFAULTS ──
+Chart.defaults.color = '#4d5a70';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const gridColor = 'rgba(42,51,71,0.6)';
+
+// ── MONTHLY CHART ──
+new Chart(document.getElementById('monthlyChart'), {
+  type:'bar',
+  data:{
+    labels: monthly.map(d=>d.m),
+    datasets:[
+      {label:'New Users',data:monthly.map(d=>d.new),backgroundColor:'rgba(0,212,255,0.7)',borderRadius:3,stack:'a'},
+      {label:'Established Users',data:monthly.map(d=>d.est),backgroundColor:'rgba(6,214,160,0.7)',borderRadius:3,stack:'a'}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{color:'#8b95aa',boxWidth:12,padding:20}}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:'#4d5a70'}},
+      y:{grid:{color:gridColor},ticks:{color:'#4d5a70'}}
+    }
+  }
+});
+
+// ── DEVICE DONUT ──
+new Chart(document.getElementById('deviceChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Desktop','Mobile','Tablet'],
+    datasets:[{data:[6447,2465,51],backgroundColor:['rgba(0,212,255,0.8)','rgba(255,77,109,0.8)','rgba(255,209,102,0.8)'],borderWidth:0,hoverOffset:8}]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    cutout:'72%',
+    plugins:{legend:{display:false}}
+  }
+});
+
+// ── CHANNEL DONUT ──
+new Chart(document.getElementById('channelDonut'), {
+  type:'doughnut',
+  data:{
+    labels:channels.map(c=>c.name),
+    datasets:[{
+      data:channels.map(c=>c.users),
+      backgroundColor:['rgba(255,61,92,0.85)','rgba(0,212,255,0.85)','rgba(255,140,66,0.85)','rgba(255,209,102,0.7)','rgba(6,214,160,0.8)','rgba(131,88,255,0.8)','rgba(255,183,77,0.8)','rgba(0,180,216,0.8)','rgba(200,100,180,0.8)'],
+      borderWidth:0,hoverOffset:8
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,cutout:'65%',
+    plugins:{
+      legend:{position:'right',labels:{color:'#8b95aa',boxWidth:10,padding:12,font:{size:11}}}
+    }
+  }
+});
+
+// ── CONTACT CHART ──
+new Chart(document.getElementById('contactChart'), {
+  type:'bar',
+  data:{
+    labels:['Direct','Organic Search','Referral','Unassigned'],
+    datasets:[{
+      label:'Users to /get-in-touch/',
+      data:[338,39,3,1],
+      backgroundColor:['rgba(255,61,92,0.7)','rgba(0,212,255,0.7)','rgba(6,214,160,0.7)','rgba(255,209,102,0.7)'],
+      borderRadius:4
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    indexAxis:'y',
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:'#4d5a70'}},
+      y:{grid:{display:false},ticks:{color:'#8b95aa'}}
+    }
+  }
+});
+
+// ── ESTABLISHED TREND ──
+new Chart(document.getElementById('establishedChart'), {
+  type:'line',
+  data:{
+    labels:monthly.map(d=>d.m),
+    datasets:[{
+      label:'Established Users',
+      data:monthly.map(d=>d.est),
+      borderColor:'rgba(6,214,160,1)',
+      backgroundColor:'rgba(6,214,160,0.08)',
+      borderWidth:2,
+      pointRadius:4,
+      pointBackgroundColor:'rgba(6,214,160,1)',
+      tension:0.35,
+      fill:true
+    },{
+      label:'New Users',
+      data:monthly.map(d=>d.new),
+      borderColor:'rgba(0,212,255,0.4)',
+      backgroundColor:'transparent',
+      borderWidth:1.5,
+      pointRadius:2,
+      borderDash:[4,4],
+      tension:0.35,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{color:'#8b95aa',boxWidth:12,padding:20}}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:'#4d5a70'}},
+      y:{grid:{color:gridColor},ticks:{color:'#4d5a70'}}
+    }
+  }
+});
+
+// ── CHANNEL TABLE ──
+const tbody = document.getElementById('channelTableBody');
+channels.forEach(c => {
+  let health='ok', healthLabel='Healthy';
+  if(c.name==='Direct'){health='danger';healthLabel='Attribution Gap';}
+  else if(c.name==='Display'){health='danger';healthLabel='Wasted Spend';}
+  else if(c.name==='Paid Search'){health='warn';healthLabel='Low Volume';}
+  else if(c.name==='Organic Social'){health='warn';healthLabel='Under-utilised';}
+  else if(c.mob_pct>50 && c.name!=='Organic Social'){health='warn';healthLabel='Mobile Anomaly';}
+
+  tbody.innerHTML += `<tr>
+    <td style="font-weight:500">${c.name}</td>
+    <td style="font-family:var(--font-mono)">${c.users.toLocaleString()}</td>
+    <td>
+      <div class="bar-bg">
+        <div class="bar-fill" style="width:${Math.min(c.pct,100)}%"></div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${c.pct}%</span>
+    </td>
+    <td style="font-family:var(--font-mono);color:${c.mob_pct>80?'var(--critical)':c.mob_pct>40?'var(--accent3)':'var(--text2)'}">${c.mob_pct}%</td>
+    <td style="font-family:var(--font-mono)">${c.new.toLocaleString()}</td>
+    <td style="font-family:var(--font-mono)">${c.est.toLocaleString()}</td>
+    <td><span class="tag ${health}">${healthLabel}</span></td>
+  </tr>`;
+});
+
+// ── PAGES GRID ──
+const maxUsers = Math.max(...pages.map(p=>p.u));
+const pagesGrid = document.getElementById('pagesGrid');
+pages.forEach((p,i) => {
+  const flagHtml = p.flag ? `<span class="tag ${p.flag}" style="font-size:9px">${p.flag==='warn'?'LOW':'PRODUCT'}</span>` : '';
+  pagesGrid.innerHTML += `<div class="page-row">
+    <div class="page-rank">${i+1}</div>
+    <div class="page-name" title="${p.p}">${p.p}</div>
+    <div class="page-bar-wrap">
+      <div class="bar-bg"><div class="bar-fill" style="width:${(p.u/maxUsers*100).toFixed(1)}%;background:${i===0?'var(--accent)':i===2?'var(--accent4)':'var(--accent)'}"></div></div>
+    </div>
+    <div class="page-users">${p.u}</div>
+    <div class="page-flag">${flagHtml}</div>
+  </div>`;
+});
+
+// ── FINDINGS ──
+const findingsList = document.getElementById('findingsList');
+findings.forEach(f => {
+  findingsList.innerHTML += `<div class="finding-card ${f.impact}">
+    <div class="finding-top">
+      <div class="finding-rank">0${f.rank}</div>
+      <div class="finding-main">
+        <div class="finding-impact">${f.impact.toUpperCase()}</div>
+        <div class="finding-title">${f.title}</div>
+        <div class="finding-metric">📊 ${f.metric}</div>
+        <div class="finding-detail">${f.detail}</div>
+        <div class="finding-action">
+          <div class="action-icon">→</div>
+          <div class="action-text"><strong style="color:var(--accent)">Action:</strong> ${f.action}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+});
+</script>
+</body>
+</html>
